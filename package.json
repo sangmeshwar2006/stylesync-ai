@@ -1,10 +1,11 @@
 {
-  "name": "react-example",
+  "name": "stylesync-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "vite --host 0.0.0.0",
+    "dev:api": "python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
