@@ -1,47 +1,37 @@
-import { GoogleGenAI } from "@google/genai";
+import type { ImageData } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+type ImagePayload = Pick<ImageData, 'data' | 'mimeType'>;
 
-export async function getFashionAdvice(prompt: string, imageData?: { data: string; mimeType: string }) {
+const STYLIST_FALLBACK = "I'm having trouble connecting to my fashion stylist right now. Please try again in a moment.";
+
+export async function getFashionAdvice(prompt: string, imageData?: ImagePayload) {
   try {
-    const contents: any[] = [
-      "You are a luxury fashion consultant for StyleSync AI. Provide expert advice on outfits, color matching, and style trends. Keep it concise, sophisticated, and helpful. "
-    ];
-
-    if (imageData) {
-      contents.push({
-        inlineData: {
-          data: imageData.data,
-          mimeType: imageData.mimeType
-        }
-      });
-      contents.push(`User has uploaded an image of clothing. Analyze this image and provide a styling recommendation for it. ${prompt}`);
-    } else {
-      contents.push(`User's question: ${prompt}`);
-    }
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ role: "user", parts: contents.map(c => typeof c === 'string' ? { text: c } : c) }]
+    const response = await fetch('/api/ai/fashion-advice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, imageData }),
     });
-
-    return response.text || "I'm having trouble connecting to my fashion database. Please try again in a moment.";
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Stylist request failed');
+    return result.text || STYLIST_FALLBACK;
   } catch (error) {
-    console.error("Gemini API error:", error);
-    return "I'm having trouble connecting to my fashion database. Please try again in a moment.";
+    console.error('Fashion advice request failed:', error);
+    return STYLIST_FALLBACK;
   }
 }
 
-export async function getPersonalizedRecommendations(userHistory: any) {
+export async function getPersonalizedRecommendations(userHistory: string[]) {
   try {
-    const prompt = `Based on these recently viewed items categories: ${userHistory.join(", ")}, suggest 3 fashion categories to explore next. Return as a simple comma-separated list.`;
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt
+    const response = await fetch('/api/ai/recommendations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userHistory }),
     });
-    return response.text?.split(",").map(s => s.trim()) || [];
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Recommendation request failed');
+    return Array.isArray(result.recommendations) ? result.recommendations : [];
   } catch (error) {
-    console.error("Gemini API error:", error);
+    console.error('Recommendation request failed:', error);
     return [];
   }
 }
